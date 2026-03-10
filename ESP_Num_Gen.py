@@ -160,12 +160,12 @@ class AppGeradorNumeros:
     def mostrar_janela_idioma(self):
         self.win_idioma = tk.Toplevel(self.root)
         self.win_idioma.configure(bg="#1e1e1e")
-        self.criar_barra_titulo_simples(self.win_idioma, "Idioma / Language")
-        tk.Label(self.win_idioma, text="Idioma/Language", font=("Segoe UI", 14), bg="#1e1e1e", fg="white").pack(pady=(20, 30))
+        self.criar_barra_titulo_simples(self.win_idioma, "ESP Num Gen")
+        tk.Label(self.win_idioma, text="Language / Idioma", font=("Segoe UI", 14), bg="#1e1e1e", fg="white").pack(pady=(20, 30))
         btn_frame = tk.Frame(self.win_idioma, bg="#1e1e1e")
         btn_frame.pack()
-        tk.Button(btn_frame, text="Português", font=("Segoe UI", 12), width=15, command=lambda: self.proximo_step(self.win_idioma, "PT")).pack(side="left", padx=10)
         tk.Button(btn_frame, text="English", font=("Segoe UI", 12), width=15, command=lambda: self.proximo_step(self.win_idioma, "EN")).pack(side="left", padx=10)
+        tk.Button(btn_frame, text="Português", font=("Segoe UI", 12), width=15, command=lambda: self.proximo_step(self.win_idioma, "PT")).pack(side="left", padx=10)
         self.centrar_janela_fix(self.win_idioma, 450, 230)
 
     def criar_barra_titulo_simples(self, win, txt):

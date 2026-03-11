@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Números ESP</title>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --text: #4d4d4d;
+            --num: #00ff9c;
+            --trough: #2a2a2a;
+            --border: #313131;
+            --modal-bg: #252525;
+            --accent: #00ff9c;
+        }
+
+        body.light-mode {
+            --bg: #ffffff;
+            --text: #b3b3b3;
+            --num: #232923;
+            --trough: #f0f0f0;
+            --border: #e1e1e1;
+            --modal-bg: #f8f8f8;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        /* Splash Screen */
+        #splash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #splash img {
+            max-width: 400px;
+            max-height: 50vh;
+            margin-bottom: 20px;
+        }
+
+        /* Modais (Setup e Ajuda) */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 950;
+        }
+
+        .modal {
+            background: var(--modal-bg);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal h2 { color: white; margin-top: 0; }
+        body.light-mode .modal h2 { color: #333; }
+        
+        .help-text {
+            text-align: left;
+            color: #ccc;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            margin: 20px 0;
+        }
+        body.light-mode .help-text { color: #666; }
+
+        input {
+            background: #333; border: 2px solid #555; color: white;
+            padding: 12px; font-size: 1.5rem; width: 150px;
+            text-align: center; margin: 20px 0; border-radius: 6px;
+        }
+
+        button {
+            background: #444; color: white; border: none;
+            padding: 12px 30px; cursor: pointer; border-radius: 6px;
+            font-size: 1.1rem; font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background: #555; }
+
+        /* Interface Principal */
+        #main-ui {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 20px;
+            display: none;
+        }
+
+        /* LOGOTIPO - Apenas Zoom */
+        .header-logo img {
+            max-height: 160px;
+            width: auto;
+            margin-top: 20px;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .header-logo img:hover { transform: scale(1.05); }
+
+        .progress-container {
+            width: 70%; height: 10px; background: var(--trough);
+            margin: 15px auto; border-radius: 5px; overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%; height: 100%; background: var(--text);
+            transition: width 1s linear;
+        }
+
+        #number-display {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            color: var(--num);
+            font-size: 18vw; 
+            width: 95%; margin: 0 auto;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .bottom-ui { text-align: center; padding: 20px; }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--text);
+            color: var(--text);
+            padding: 8px 20px;
+        }
+
+        .blink { animation: blinker 1.2s linear infinite; }
+        .blink-slow { animation: blinker 2.5s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* FULLSCREEN */
+        body.is-fullscreen .header-logo,
+        body.is-fullscreen .top-info,
+        body.is-fullscreen .bottom-info,
+        body.is-fullscreen #btn-theme,
+        body.is-fullscreen #btn-help {
+            display: none !important;
+        }
+
+        #error-msg { color: #ff4d4d; font-size: 0.9rem; height: 20px; }
+    </style>
+</head>
+<body id="body-tag">
+
+    <div id="splash">
+        <img src="logo.png" alt="Logo" class="blink-slow" onerror="this.style.display='none'">
+        <h1 style="color:white; font-weight: 300; letter-spacing: 5px;">ESP GENERATOR</h1>
+    </div>
+
+    <div id="setup-overlay" class="overlay" style="display:none">
+        <div class="modal">
+            <h2 id="modal-title">Segundos</h2>
+            <p id="modal-desc" style="color:gray">(1 a 36000)</p>
+            <input type="number" id="setup-input" value="30">
+            <div id="error-msg"></div>
+            <br>
+            <button onclick="handleSetup()">Confirmar</button>
+        </div>
+    </div>
+
+    <div id="help-overlay" class="overlay" style="display:none">
+        <div class="modal">
+            <h2>Guia de Ajuda</h2>
+            <div class="help-text">
+                <strong>O que é este software?</strong><br>
+                Este gerador foi desenhado para testes de Percepção Extra-Sensorial (ESP) e experiências de precognição ou telepatia. 
+                <br><br>
+                <strong>Como utilizar:</strong>
+                <ol>
+                    <li>Defina o tempo de espera (permite ao sujeito concentrar-se no alvo antes da revelação).</li>
+                    <li>Escolha o número de algarismos (ajusta a dificuldade estatística).</li>
+                    <li>O sistema gera um número verdadeiramente aleatório após o tempo decorrido.</li>
+                </ol>
+                <strong>Dica:</strong> Use o modo "Ecrã Completo" para eliminar distrações visuais durante a experiência.
+            </div>
+            <button onclick="toggleHelp()">Fechar</button>
+        </div>
+    </div>
+
+    <div id="main-ui">
+        <div class="header-logo" style="text-align: center;">
+            <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+        </div>
+
+        <div class="top-info" style="text-align: center;">
+            <div id="timer-text" style="font-size: 1.3rem; margin-top: 10px;">A preparar...</div>
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="number-display" class="blink"></div>
+
+        <div class="bottom-ui">
+            <div class="bottom-info">
+                <div id="start-time">Iniciado às: --:--:--</div>
+                <div id="gen-time" style="margin-top: 5px;"></div>
+            </div>
+            <div class="controls">
+                <button id="btn-help" class="btn-outline" onclick="toggleHelp()">Ajuda</button>
+                <button id="btn-theme" class="btn-outline" onclick="toggleTheme()">Inverter Cores</button>
+                <button id="btn-fs" class="btn-outline" onclick="toggleFullscreen()">Ecrã Completo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let config = { seconds: 30, digits: 6, step: 1 };
+        let timeLeft = 30;
+        let wakeLock = null;
+
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('setup-overlay').style.display = 'flex';
+        }, 6000);
+
+        async function requestWakeLock() {
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+
+        function handleSetup() {
+            const input = document.getElementById('setup-input');
+            const error = document.getElementById('error-msg');
+            const val = parseInt(input.value);
+
+            if (config.step === 1) {
+                if (isNaN(val) || val < 1 || val > 36000) { error.innerText = "Inválido (1-36000)"; return; }
+                config.seconds = val; timeLeft = val; config.step = 2;
+                error.innerText = "";
+                document.getElementById('modal-title').innerText = "Algarismos";
+                document.getElementById('modal-desc').innerText = "(1 a 9)";
+                input.value = 6;
+            } else {
+                if (isNaN(val) || val < 1 || val > 9) { error.innerText = "Inválido (1-9)"; return; }
+                config.digits = val;
+                document.getElementById('setup-overlay').style.display = 'none';
+                startApp();
+            }
+        }
+
+        function startApp() {
+            document.getElementById('main-ui').style.display = 'flex';
+            document.getElementById('start-time').innerText = `Iniciado: ${new Date().toLocaleTimeString('pt-PT')}`;
+            document.getElementById('number-display').innerText = "_".repeat(config.digits);
+            adjustFontSize();
+            updateTimer();
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0) {
+                document.getElementById('timer-text').innerText = `A gerar em ${timeLeft}s`;
+                document.getElementById('progress-bar').style.width = (((config.seconds - timeLeft) / config.seconds) * 100) + "%";
+                timeLeft--;
+                setTimeout(updateTimer, 1000);
+            } else {
+                generateNumber();
+            }
+        }
+
+        function generateNumber() {
+            document.getElementById('progress-bar').style.width = "100%";
+            document.getElementById('timer-text').innerText = "Gerado!";
+            document.getElementById('number-display').classList.remove('blink');
+            const min = Math.pow(10, config.digits - 1);
+            const max = Math.pow(10, config.digits) - 1;
+            const finalNum = config.digits === 1 ? Math.floor(Math.random() * 10) : Math.floor(Math.random() * (max - min + 1)) + min;
+            document.getElementById('number-display').innerText = finalNum;
+            document.getElementById('gen-time').innerText = `Gerado às: ${new Date().toLocaleTimeString('pt-PT')}`;
+            adjustFontSize();
+        }
+
+        function adjustFontSize() {
+            const display = document.getElementById('number-display');
+            const len = display.innerText.length;
+            let fontSize = 95 / (len * 0.85); 
+            if (fontSize > 22) fontSize = 22; 
+            display.style.fontSize = fontSize + "vw";
+        }
+
+        function toggleTheme() { document.body.classList.toggle('light-mode'); }
+
+        function toggleHelp() {
+            const help = document.getElementById('help-overlay');
+            help.style.display = (help.style.display === 'none') ? 'flex' : 'none';
+        }
+
+        function toggleFullscreen() {
+            const body = document.getElementById('body-tag');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                body.classList.add('is-fullscreen');
+                requestWakeLock();
+            } else {
+                document.exitFullscreen();
+                body.classList.remove('is-fullscreen');
+                if (wakeLock) { wakeLock.release(); wakeLock = null; }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) document.getElementById('body-tag').classList.remove('is-fullscreen');
+        });
+
+        window.addEventListener('resize', adjustFontSize);
+    </script>
+</body>
+</html>

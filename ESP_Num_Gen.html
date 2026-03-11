@@ -54,7 +54,7 @@
             margin-bottom: 20px;
         }
 
-        /* Modais (Setup e Ajuda) */
+        /* Modais */
         .overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -98,8 +98,11 @@
             padding: 12px 30px; cursor: pointer; border-radius: 6px;
             font-size: 1.1rem; font-weight: bold;
             transition: background 0.2s;
+            margin: 5px;
         }
         button:hover { background: #555; }
+
+        .lang-btn { background: #333; border: 1px solid var(--text); min-width: 120px; }
 
         /* Interface Principal */
         #main-ui {
@@ -110,7 +113,6 @@
             display: none;
         }
 
-        /* LOGOTIPO - Apenas Zoom */
         .header-logo img {
             max-height: 160px;
             width: auto;
@@ -182,6 +184,14 @@
         <h1 style="color:white; font-weight: 300; letter-spacing: 5px;">ESP GENERATOR</h1>
     </div>
 
+    <div id="lang-overlay" class="overlay" style="display:none">
+        <div class="modal">
+            <h2 style="margin-bottom: 30px;">Select Language / Selecione o Idioma</h2>
+            <button class="lang-btn" onclick="setLang('pt')">Português</button>
+            <button class="lang-btn" onclick="setLang('en')">English</button>
+        </div>
+    </div>
+
     <div id="setup-overlay" class="overlay" style="display:none">
         <div class="modal">
             <h2 id="modal-title">Segundos</h2>
@@ -189,26 +199,15 @@
             <input type="number" id="setup-input" value="30">
             <div id="error-msg"></div>
             <br>
-            <button onclick="handleSetup()">Confirmar</button>
+            <button id="setup-confirm-btn" onclick="handleSetup()">Confirmar</button>
         </div>
     </div>
 
     <div id="help-overlay" class="overlay" style="display:none">
         <div class="modal">
-            <h2>Guia de Ajuda</h2>
-            <div class="help-text">
-                <strong>O que é este software?</strong><br>
-                Este gerador foi desenhado para testes de Percepção Extra-Sensorial (ESP) e experiências de precognição ou telepatia. 
-                <br><br>
-                <strong>Como utilizar:</strong>
-                <ol>
-                    <li>Defina o tempo de espera (permite ao sujeito concentrar-se no alvo antes da revelação).</li>
-                    <li>Escolha o número de algarismos (ajusta a dificuldade estatística).</li>
-                    <li>O sistema gera um número verdadeiramente aleatório após o tempo decorrido.</li>
-                </ol>
-                <strong>Dica:</strong> Use o modo "Ecrã Completo" para eliminar distrações visuais durante a experiência.
-            </div>
-            <button onclick="toggleHelp()">Fechar</button>
+            <h2 id="help-title">Ajuda</h2>
+            <div id="help-content" class="help-text"></div>
+            <button id="help-close-btn" onclick="toggleHelp()">Fechar</button>
         </div>
     </div>
 
@@ -218,7 +217,7 @@
         </div>
 
         <div class="top-info" style="text-align: center;">
-            <div id="timer-text" style="font-size: 1.3rem; margin-top: 10px;">A preparar...</div>
+            <div id="timer-text" style="font-size: 1.3rem; margin-top: 10px;">...</div>
             <div class="progress-container">
                 <div id="progress-bar"></div>
             </div>
@@ -228,7 +227,7 @@
 
         <div class="bottom-ui">
             <div class="bottom-info">
-                <div id="start-time">Iniciado às: --:--:--</div>
+                <div id="start-time">---</div>
                 <div id="gen-time" style="margin-top: 5px;"></div>
             </div>
             <div class="controls">
@@ -240,33 +239,96 @@
     </div>
 
     <script>
+        const texts = {
+            pt: {
+                secTitle: "Segundos",
+                secDesc: "(1 a 36000)",
+                digTitle: "Algarismos",
+                digDesc: "(1 a 9)",
+                btnConfirm: "Confirmar",
+                errorSec: "Inválido (1-36000)",
+                errorDig: "Inválido (1-9)",
+                timerText: "A gerar em {s}s",
+                genText: "Gerado!",
+                startedAt: "Iniciado às: ",
+                genAt: "Gerado às: ",
+                btnHelp: "Ajuda",
+                btnTheme: "Inverter Cores",
+                btnFS: "Ecrã Completo",
+                helpTitle: "Guia de Ajuda",
+                helpBody: "<strong>O que é este software?</strong><br>Este gerador foi desenhado para testes de Percepção Extra-Sensorial (ESP).<br><br><strong>Como utilizar:</strong><ol><li>Defina o tempo de espera.</li><li>Escolha a quantidade de algarismos.</li><li>O sistema gera o número após o tempo decorrido.</li></ol><strong>Dica:</strong> Use o modo Fullscreen para focar a mente.",
+                helpClose: "Fechar"
+            },
+            en: {
+                secTitle: "Seconds",
+                secDesc: "(1 to 36000)",
+                digTitle: "Digits",
+                digDesc: "(1 to 9)",
+                btnConfirm: "Confirm",
+                errorSec: "Invalid (1-36000)",
+                errorDig: "Invalid (1-9)",
+                timerText: "Generating in {s}s",
+                genText: "Generated!",
+                startedAt: "Started at: ",
+                genAt: "Generated at: ",
+                btnHelp: "Help",
+                btnTheme: "Invert Colors",
+                btnFS: "Fullscreen",
+                helpTitle: "Help Guide",
+                helpBody: "<strong>What is this software?</strong><br>This generator is designed for Extra-Sensory Perception (ESP) testing.<br><br><strong>How to use:</strong><ol><li>Set the waiting time.</li><li>Choose the number of digits.</li><li>The system generates the number after the countdown.</li></ol><strong>Tip:</strong> Use Fullscreen mode to focus your mind.",
+                helpClose: "Close"
+            }
+        };
+
+        let currentLang = 'pt';
         let config = { seconds: 30, digits: 6, step: 1 };
         let timeLeft = 30;
         let wakeLock = null;
 
+        // 1. Splash
         setTimeout(() => {
             document.getElementById('splash').style.display = 'none';
-            document.getElementById('setup-overlay').style.display = 'flex';
+            document.getElementById('lang-overlay').style.display = 'flex';
         }, 6000);
 
-        async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        // 2. Idioma
+        function setLang(l) {
+            currentLang = l;
+            document.getElementById('lang-overlay').style.display = 'none';
+            document.getElementById('setup-overlay').style.display = 'flex';
+            updateSetupUI();
         }
 
+        function updateSetupUI() {
+            const t = texts[currentLang];
+            document.getElementById('modal-title').innerText = t.secTitle;
+            document.getElementById('modal-desc').innerText = t.secDesc;
+            document.getElementById('setup-confirm-btn').innerText = t.btnConfirm;
+            // UI Principal pré-tradução
+            document.getElementById('btn-help').innerText = t.btnHelp;
+            document.getElementById('btn-theme').innerText = t.btnTheme;
+            document.getElementById('btn-fs').innerText = t.btnFS;
+            document.getElementById('help-title').innerText = t.helpTitle;
+            document.getElementById('help-content').innerHTML = t.helpBody;
+            document.getElementById('help-close-btn').innerText = t.helpClose;
+        }
+
+        // 3. Setup
         function handleSetup() {
             const input = document.getElementById('setup-input');
             const error = document.getElementById('error-msg');
             const val = parseInt(input.value);
+            const t = texts[currentLang];
 
             if (config.step === 1) {
-                if (isNaN(val) || val < 1 || val > 36000) { error.innerText = "Inválido (1-36000)"; return; }
+                if (isNaN(val) || val < 1 || val > 36000) { error.innerText = t.errorSec; return; }
                 config.seconds = val; timeLeft = val; config.step = 2;
                 error.innerText = "";
-                document.getElementById('modal-title').innerText = "Algarismos";
-                document.getElementById('modal-desc').innerText = "(1 a 9)";
+                document.getElementById('modal-title').innerText = t.digTitle;
+                document.getElementById('modal-desc').innerText = t.digDesc;
                 input.value = 6;
             } else {
-                if (isNaN(val) || val < 1 || val > 9) { error.innerText = "Inválido (1-9)"; return; }
+                if (isNaN(val) || val < 1 || val > 9) { error.innerText = t.errorDig; return; }
                 config.digits = val;
                 document.getElementById('setup-overlay').style.display = 'none';
                 startApp();
@@ -274,16 +336,18 @@
         }
 
         function startApp() {
+            const t = texts[currentLang];
             document.getElementById('main-ui').style.display = 'flex';
-            document.getElementById('start-time').innerText = `Iniciado: ${new Date().toLocaleTimeString('pt-PT')}`;
+            document.getElementById('start-time').innerText = t.startedAt + new Date().toLocaleTimeString('pt-PT');
             document.getElementById('number-display').innerText = "_".repeat(config.digits);
             adjustFontSize();
             updateTimer();
         }
 
         function updateTimer() {
+            const t = texts[currentLang];
             if (timeLeft > 0) {
-                document.getElementById('timer-text').innerText = `A gerar em ${timeLeft}s`;
+                document.getElementById('timer-text').innerText = t.timerText.replace("{s}", timeLeft);
                 document.getElementById('progress-bar').style.width = (((config.seconds - timeLeft) / config.seconds) * 100) + "%";
                 timeLeft--;
                 setTimeout(updateTimer, 1000);
@@ -293,14 +357,15 @@
         }
 
         function generateNumber() {
+            const t = texts[currentLang];
             document.getElementById('progress-bar').style.width = "100%";
-            document.getElementById('timer-text').innerText = "Gerado!";
+            document.getElementById('timer-text').innerText = t.genText;
             document.getElementById('number-display').classList.remove('blink');
             const min = Math.pow(10, config.digits - 1);
             const max = Math.pow(10, config.digits) - 1;
             const finalNum = config.digits === 1 ? Math.floor(Math.random() * 10) : Math.floor(Math.random() * (max - min + 1)) + min;
             document.getElementById('number-display').innerText = finalNum;
-            document.getElementById('gen-time').innerText = `Gerado às: ${new Date().toLocaleTimeString('pt-PT')}`;
+            document.getElementById('gen-time').innerText = t.genAt + new Date().toLocaleTimeString('pt-PT');
             adjustFontSize();
         }
 
@@ -313,7 +378,6 @@
         }
 
         function toggleTheme() { document.body.classList.toggle('light-mode'); }
-
         function toggleHelp() {
             const help = document.getElementById('help-overlay');
             help.style.display = (help.style.display === 'none') ? 'flex' : 'none';
@@ -324,7 +388,7 @@
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
                 body.classList.add('is-fullscreen');
-                requestWakeLock();
+                if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock => wakeLock = lock);
             } else {
                 document.exitFullscreen();
                 body.classList.remove('is-fullscreen');
